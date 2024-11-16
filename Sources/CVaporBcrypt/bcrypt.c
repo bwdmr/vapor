@@ -44,6 +44,7 @@ char   *bcrypt_gensalt(u_int8_t);
 
 static int decode_base64(u_int8_t *, size_t, const char *);
 
+
 /*
  * the core bcrypt function
  */
@@ -158,6 +159,7 @@ inval:
     return -1;
 }
 
+
 /*
  * internal utilities
  */
@@ -180,6 +182,7 @@ static const u_int8_t index_64[128] = {
     51, 52, 53, 255, 255, 255, 255, 255
 };
 #define CHAR64(c)  ( (c) > 127 ? 255 : index_64[(c)])
+
 
 /*
  * read buflen (after decoding) bytes of data from b64data
@@ -223,6 +226,7 @@ decode_base64(u_int8_t *buffer, size_t len, const char *b64data)
     return 0;
 }
 
+
 /*
  * Turn len bytes of data into base64 encoded data.
  * This works without = padding.
@@ -256,5 +260,94 @@ vapor_encode_base64(char *b64buffer, const u_int8_t *data, size_t len)
         *bp++ = Base64Code[c2 & 0x3f];
     }
     *bp = '\0';
+    return 0;
+}
+
+
+/*
+ * Extract the salt portion from a bcrypt hash
+ * The salt includes the version, cost parameter, and actual salt value
+ * Returns 0 on success, -1 on error
+ *
+ * Version identifiers:
+ * $2$ - Original bcrypt (obsolete)
+ * $2a$ - First revision of bcrypt
+ * $2x$ - Possible buggy implementations (crypt_blowfish)
+ * $2y$ - Format for fixes in crypt_blowfish
+ * $2b$ - OpenBSD implementation (current)
+ */
+int
+vapor_bcrypt_extractsalt(const char *hash, char *salt, size_t saltlen)
+{
+    /* Validate input parameters */
+    if (hash == NULL || salt == NULL)
+        return -1;
+
+    /* Validate basic format starts with $2 */
+    if (hash[0] != '$' || hash[1] != '2')
+        return -1;
+
+    /* Determine version and required lengths */
+    size_t prefix_len;      // Length of version identifier ($2x$)
+    size_t required_len;    // Total required buffer size
+    size_t min_hash_len;    // Minimum hash length required
+    
+    switch (hash[2]) {
+        case '$':
+            /* Original format $2$ */
+            prefix_len = 3;
+            required_len = 28;  // 27 + null terminator
+            min_hash_len = 27;  // $2$CC$ssssssssssssssssssssss
+            break;
+        case 'a':
+        case 'b':
+        case 'x':
+        case 'y':
+            /* Extended formats $2a$, $2b$, $2x$, $2y$ */
+            if (hash[3] != '$')
+                return -1;
+            prefix_len = 4;
+            required_len = 29;  // 28 + null terminator
+            min_hash_len = 28;  // $2x$CC$ssssssssssssssssssssss
+            break;
+        default:
+            return -1;
+    }
+
+    /* Check buffer size */
+    if (saltlen < required_len)
+        return -1;
+
+    /* Check minimum hash length */
+    size_t hash_len = strlen(hash);
+    if (hash_len < min_hash_len)
+        return -1;
+
+    /* Get cost position based on version */
+    size_t cost_pos = prefix_len;
+
+    /* Validate cost parameter format (2 digits + $) */
+    if (!isdigit((unsigned char)hash[cost_pos]) ||
+        !isdigit((unsigned char)hash[cost_pos + 1]) ||
+        hash[cost_pos + 2] != '$')
+        return -1;
+
+    /* Calculate salt positions */
+    size_t salt_start = cost_pos + 3;  // After CC$
+    size_t salt_chars = 22;            // Fixed length for all versions
+    size_t total_len = prefix_len + 3 + salt_chars;  // prefix + CC$ + salt
+
+    /* Verify remaining length has room for full salt */
+    if (hash_len < total_len)
+        return -1;
+
+    /* Verify there's a dot after the salt (if the hash continues) */
+    if (hash_len > total_len && hash[total_len] != '.')
+        return -1;
+
+    /* Copy the complete salt */
+    memcpy(salt, hash, total_len);
+    salt[total_len] = '\0';
+
     return 0;
 }

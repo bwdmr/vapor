@@ -27,16 +27,17 @@ public struct MemorySessions: SessionDriver, Sendable {
             self.queue = DispatchQueue(label: "MemorySessions.Storage")
         }
     }
-
+    
     public init(storage: Storage) {
         self.storage = storage
     }
-
+    
     public func createSession(
+        _ sessionID: SessionID? = nil,
         _ data: SessionData,
         for request: Request
     ) -> EventLoopFuture<SessionID> {
-        let sessionID = self.generateID()
+        let sessionID = sessionID ?? self.generateID()
         self.storage.queue.sync {
             self.storage.sessions[sessionID] = data
         }

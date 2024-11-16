@@ -62,7 +62,11 @@ let package = Package(
     ],
     targets: [
         // C helpers
-        .target(name: "CVaporBcrypt"),
+        .target(
+          name: "CVaporBcrypt",
+          dependencies: [],
+          sources: ["bcrypt.c", "blf.c"],
+          publicHeadersPath: "include" ),
         
         // Vapor
         .target(

@@ -103,7 +103,7 @@ public final class BCryptDigest {
 
         let hashSalt = String(hash.prefix(hashVersion.fullSaltCount))
         guard !hashSalt.isEmpty, hashSalt.count == hashVersion.fullSaltCount else {
-            throw BcryptError.invalidHash
+            throw BcryptError.invalidSalt
         }
 
         let hashChecksum = String(hash.suffix(hashVersion.checksumCount))

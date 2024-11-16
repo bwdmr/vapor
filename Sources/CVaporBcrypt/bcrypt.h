@@ -2,6 +2,7 @@
 #include <string.h>
 #include <stdio.h>
 
+
 #if defined(_WIN32)
 typedef unsigned char uint8_t;
 typedef uint8_t u_int8_t;
@@ -30,10 +31,11 @@ typedef uint64_t u_int64_t;
 #define BCRYPT_MAXSALT 16    /* Precomputation is just so nice */
 #define BCRYPT_WORDS 6        /* Ciphertext words */
 #define BCRYPT_MINLOGROUNDS 4    /* we have log2(rounds) in salt */
-
-#define    BCRYPT_SALTSPACE    (7 + (BCRYPT_MAXSALT * 4 + 2) / 3 + 1)
-#define    BCRYPT_HASHSPACE    61
+#define BCRYPT_SALTSPACE 29 /* */
+#define BCRYPT_HASHSPACE 61 /* */
 
 
 int vapor_bcrypt_hashpass(const char *key, const char *salt, char *encrypted, size_t encryptedlen);
 int vapor_encode_base64(char *, const u_int8_t *, size_t);
+int vapor_bcrypt_extractsalt(const char *hash, char *salt, size_t saltlen);
+
